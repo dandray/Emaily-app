@@ -8,6 +8,7 @@ import reduxThunk from 'redux-thunk';
 
 import App from './components/App';
 import reducers from './reducers';
+
 //Test code for testing backend route while we don't have a frontend route yet (like Postman) 
 import axios from 'axios';
 window.axios = axios;

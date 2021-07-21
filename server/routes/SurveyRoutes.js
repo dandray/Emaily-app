@@ -21,7 +21,7 @@ module.exports = app => {
         //We define here a new pathname that will contain 2 variables (used like a regex below)
         const p = new Path('/api/surveys/:surveyId/:choice');
 
-        const events = _.chain(req.body)
+        _.chain(req.body)
         .map( ({email, url})=>{
             //Then we can match this pathname to the path we get from the URL
             const match = p.test(new URL(url).pathname);
@@ -48,7 +48,6 @@ module.exports = app => {
         })
         .value();
 
-        console.log(events);
         res.send({});
     });
 

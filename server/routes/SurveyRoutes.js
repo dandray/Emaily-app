@@ -3,13 +3,53 @@ const requireLogin = require('../middlewares/requireLogin');
 const requireCredits = require('../middlewares/requireCredits');
 const Mailer = require('../services/Mailer');
 const surveyTemplate = require('../services/emailTemplates/surveyTemplate');
+const _ = require('lodash');
+const { Path } = require('path-parser');
+const { URL } = require('url');
 
 const Survey = mongoose.model('surveys');
 
 module.exports = app => {
 
-    app.get('/api/surveys/thanks', (req, res) => {
+    app.get('/api/surveys/:surveyId/:choice', (req, res) => {
         res.send('Thanks for voting !');
+    });
+
+    //Webhooks testing (video 187) - ngrok 
+    app.post('/api/surveys/webhooks', (req, res)=> {
+
+        //We define here a new pathname that will contain 2 variables (used like a regex below)
+        const p = new Path('/api/surveys/:surveyId/:choice');
+
+        const events = _.chain(req.body)
+        .map( ({email, url})=>{
+            //Then we can match this pathname to the path we get from the URL
+            const match = p.test(new URL(url).pathname);
+            if(match){
+                return { email : email, surveyId : match.surveyId, choice : match.choice }
+            }
+        })
+        //Eliminating undefined records
+        .compact()
+        //Eliminating records that make our list containing duplicate emails/Ids
+        .uniqBy( 'email', 'surveyId')
+        //Launch the update query for every event (properties surveyId,Email,Choice) of the list 
+        .each(({surveyId, email, choice}) => {
+            Survey.updateOne({ 
+                _id : surveyId,
+                recipients : {
+                  $elemMatch : {email : email, responded : false }
+                }
+              }, {
+                  $inc : { [choice] : 1 },
+                  $set : { 'recipients.$.responded' : true },
+                  lastResponded : new Date()
+            }).exec();
+        })
+        .value();
+
+        console.log(events);
+        res.send({});
     });
 
     app.post('/api/surveys', requireLogin, requireCredits, async (req, res) => {
